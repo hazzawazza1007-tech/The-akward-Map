@@ -1,1 +1,495 @@
-the akward map
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Awkward Encounter Map</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      color: #24202c;
+      background: #f7f4fb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 18px 22px;
+      background: #fff;
+      border-bottom: 1px solid #e8e2ee;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.35rem;
+    }
+
+    header p {
+      margin: 5px 0 0;
+      color: #665f70;
+      font-size: .94rem;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 350px minmax(0, 1fr);
+      height: calc(100vh - 82px);
+      min-height: 480px;
+    }
+
+    aside {
+      overflow-y: auto;
+      padding: 18px;
+      background: #fff;
+      border-right: 1px solid #e8e2ee;
+    }
+
+    .instructions {
+      margin: 0 0 18px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #f1eafd;
+      color: #514466;
+      font-size: .9rem;
+    }
+
+    .list-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .list-heading h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .list-heading span {
+      color: #746d7e;
+      font-size: .8rem;
+    }
+
+    .story-card {
+      margin-bottom: 10px;
+      padding: 12px;
+      border: 1px solid #eee9f2;
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .story-text {
+      margin: 0 0 8px;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+
+    .story-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: #746d7e;
+      font-size: .78rem;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .vote-button {
+      border: 1px solid #ded5e8;
+      border-radius: 7px;
+      padding: 5px 9px;
+      background: #fff;
+      color: #514466;
+    }
+
+    .vote-button:hover:not(:disabled) {
+      background: #f1eafd;
+    }
+
+    .vote-button:disabled {
+      cursor: default;
+      opacity: .65;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #e9e5ed;
+    }
+
+    .empty-state {
+      padding: 16px;
+      color: #746d7e;
+      text-align: center;
+      border: 1px dashed #ded5e8;
+      border-radius: 10px;
+    }
+
+    dialog {
+      width: min(440px, calc(100% - 28px));
+      border: 0;
+      border-radius: 14px;
+      padding: 0;
+      box-shadow: 0 18px 60px #20152c44;
+    }
+
+    dialog::backdrop {
+      background: #21172d88;
+    }
+
+    .dialog-content {
+      padding: 20px;
+    }
+
+    .dialog-content h2 {
+      margin: 0 0 6px;
+      font-size: 1.15rem;
+    }
+
+    .dialog-content p {
+      margin: 0 0 14px;
+      color: #665f70;
+      font-size: .9rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 115px;
+      resize: vertical;
+      padding: 10px;
+      border: 1px solid #d9d1e1;
+      border-radius: 8px;
+      font: inherit;
+    }
+
+    .char-count {
+      margin-top: 5px;
+      text-align: right;
+      color: #746d7e;
+      font-size: .78rem;
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .dialog-actions button {
+      border: 1px solid #ded5e8;
+      border-radius: 8px;
+      padding: 8px 12px;
+      background: #fff;
+    }
+
+    .dialog-actions .submit-button {
+      border-color: #6845a5;
+      background: #6845a5;
+      color: white;
+    }
+
+    .popup-story {
+      max-width: 220px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 760px) {
+      main {
+        grid-template-columns: 1fr;
+        grid-template-rows: 52vh minmax(240px, 1fr);
+        height: auto;
+        min-height: calc(100vh - 82px);
+      }
+
+      #map { grid-row: 1; }
+
+      aside {
+        grid-row: 2;
+        border-right: 0;
+        border-top: 1px solid #e8e2ee;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>😬 The Awkward Encounter Map</h1>
+    <p>Anonymous stories from the places where they happened. No names, just cringe.</p>
+  </header>
+
+  <main>
+    <aside>
+      <p class="instructions">
+        Click anywhere on the map to drop a pin. Locations are rounded to
+        roughly 1 km before they’re saved. Stories stay on this device.
+      </p>
+
+      <div class="list-heading">
+        <h2>Most painful awkwardness</h2>
+        <span id="story-count"></span>
+      </div>
+
+      <section id="story-list" aria-live="polite"></section>
+    </aside>
+
+    <div id="map" aria-label="Map for browsing and adding awkward encounter stories"></div>
+  </main>
+
+  <dialog id="story-dialog">
+    <form id="story-form" class="dialog-content">
+      <h2>Drop an awkward story</h2>
+      <p>Your story is anonymous. Please don’t include names or identifying details.</p>
+      <textarea
+        id="story-input"
+        maxlength="280"
+        required
+        placeholder="I waved back at someone who was waving at the person behind me..."
+      ></textarea>
+      <div class="char-count"><span id="char-count">0</span>/280</div>
+
+      <div class="dialog-actions">
+        <button type="button" id="cancel-button">Cancel</button>
+        <button type="submit" class="submit-button">Drop pin</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    (() => {
+      const STORAGE_KEY = "awkward-encounter-stories-v1";
+      const VOTES_KEY = "awkward-encounter-votes-v1";
+      const MAX_STORY_LENGTH = 280;
+
+      const map = L.map("map").setView([20, 0], 2);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      const dialog = document.getElementById("story-dialog");
+      const form = document.getElementById("story-form");
+      const input = document.getElementById("story-input");
+      const charCount = document.getElementById("char-count");
+      const storyList = document.getElementById("story-list");
+      const storyCount = document.getElementById("story-count");
+
+      let pendingLocation = null;
+
+      function readArray(key) {
+        try {
+          const value = JSON.parse(localStorage.getItem(key) || "[]");
+          return Array.isArray(value) ? value : [];
+        } catch {
+          return [];
+        }
+      }
+
+      let stories = readArray(STORAGE_KEY);
+      let votedIds = new Set(readArray(VOTES_KEY));
+
+      function saveStories() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stories));
+      }
+
+      function saveVotes() {
+        localStorage.setItem(VOTES_KEY, JSON.stringify([...votedIds]));
+      }
+
+      function makeId() {
+        return typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+
+      // Round coordinates to about 1 km to avoid storing an exact location.
+      function roundedLocation(latlng) {
+        return {
+          lat: Math.round(latlng.lat * 100) / 100,
+          lng: Math.round(latlng.lng * 100) / 100
+        };
+      }
+
+      function formatDate(timestamp) {
+        const date = new Date(timestamp);
+        return Number.isNaN(date.getTime())
+          ? "Recently"
+          : date.toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "short",
+              day: "numeric"
+            });
+      }
+
+      function addPopup(marker, story) {
+        const content = document.createElement("div");
+        const text = document.createElement("div");
+        text.className = "popup-story";
+        text.textContent = story.text;
+
+        const vote = document.createElement("button");
+        vote.className = "vote-button";
+        vote.type = "button";
+        vote.textContent = votedIds.has(story.id)
+          ? `💜 ${story.votes || 0} votes`
+          : `💜 Vote (${story.votes || 0})`;
+        vote.disabled = votedIds.has(story.id);
+        vote.addEventListener("click", () => castVote(story.id));
+
+        content.append(text, vote);
+        marker.bindPopup(content);
+      }
+
+      function renderMap() {
+        map.eachLayer(layer => {
+          if (layer instanceof L.Marker) map.removeLayer(layer);
+        });
+
+        stories.forEach(story => {
+          if (
+            typeof story.lat !== "number" ||
+            typeof story.lng !== "number" ||
+            typeof story.text !== "string"
+          ) return;
+
+          const marker = L.marker([story.lat, story.lng]).addTo(map);
+          addPopup(marker, story);
+        });
+      }
+
+      function renderStories() {
+        const sorted = [...stories].sort((a, b) => {
+          const votesDifference = (b.votes || 0) - (a.votes || 0);
+          return votesDifference || (b.createdAt || 0) - (a.createdAt || 0);
+        });
+
+        storyCount.textContent = `${stories.length} ${stories.length === 1 ? "story" : "stories"}`;
+        storyList.replaceChildren();
+
+        if (sorted.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "empty-state";
+          empty.textContent = "No stories yet. Be the first to add one!";
+          storyList.appendChild(empty);
+          return;
+        }
+
+        sorted.forEach(story => {
+          const card = document.createElement("article");
+          card.className = "story-card";
+
+          const text = document.createElement("p");
+          text.className = "story-text";
+          text.textContent = story.text;
+
+          const meta = document.createElement("div");
+          meta.className = "story-meta";
+
+          const date = document.createElement("span");
+          date.textContent = formatDate(story.createdAt);
+
+          const vote = document.createElement("button");
+          vote.className = "vote-button";
+          vote.type = "button";
+          vote.textContent = votedIds.has(story.id)
+            ? `💜 ${story.votes || 0}`
+            : `💜 Vote (${story.votes || 0})`;
+          vote.disabled = votedIds.has(story.id);
+          vote.setAttribute(
+            "aria-label",
+            votedIds.has(story.id)
+              ? `You voted. ${story.votes || 0} votes`
+              : `Vote for this story. ${story.votes || 0} votes`
+          );
+          vote.addEventListener("click", () => castVote(story.id));
+
+          meta.append(date, vote);
+          card.append(text, meta);
+          storyList.appendChild(card);
+        });
+      }
+
+      function refresh() {
+        renderMap();
+        renderStories();
+      }
+
+      function castVote(id) {
+        if (votedIds.has(id)) return;
+
+        const story = stories.find(item => item.id === id);
+        if (!story) return;
+
+        story.votes = (story.votes || 0) + 1;
+        votedIds.add(id);
+
+        saveStories();
+        saveVotes();
+        refresh();
+      }
+
+      map.on("click", event => {
+        pendingLocation = roundedLocation(event.latlng);
+        input.value = "";
+        charCount.textContent = "0";
+        dialog.showModal();
+        input.focus();
+      });
+
+      input.addEventListener("input", () => {
+        charCount.textContent = String(input.value.length);
+      });
+
+      document.getElementById("cancel-button").addEventListener("click", () => {
+        dialog.close();
+      });
+
+      form.addEventListener("submit", event => {
+        event.preventDefault();
+
+        const text = input.value.trim().slice(0, MAX_STORY_LENGTH);
+        if (!text || !pendingLocation) return;
+
+        const story = {
+          id: makeId(),
+          text,
+          lat: pendingLocation.lat,
+          lng: pendingLocation.lng,
+          votes: 0,
+          createdAt: Date.now()
+        };
+
+        stories.push(story);
+        saveStories();
+        refresh();
+
+        dialog.close();
+        map.setView([story.lat, story.lng], Math.max(map.getZoom(), 12));
+        pendingLocation = null;
+      });
+
+      refresh();
+    })();
+  </script>
+</body>
+</html>
